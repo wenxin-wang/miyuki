@@ -1,6 +1,13 @@
 #!/bin/bash
 
-CMDS=(touch ls wget ag)
+set -e
+trap '>&2 echo Error on line $LINENO' ERR
+
+CMDS=(touch ls wget ag find w2rp r2wp)
+
+log_err() {
+    >&2 echo $@
+}
 
 usage() {
     cat <<EOF
@@ -11,27 +18,36 @@ touch wikiname [touch options]
 ls    [wikiname [ls options]]
 wget  wikiname [wget options]
 ag    [ag options]
+find  [wikiname or "all"] [ag options]
+w2rp  "wikiname/page"
+r2wp  wikiname realpath
+r2wp  realpath realpath
 EOF
 }
 
 check_wiki_repo() {
-    local repo=$1
+    local name=$1
+    local repo="${WIKIS[$name]}"
     if [ z"$repo" = z ]; then
-	echo "unknown wiki repo: $name"
+	log_err "unknown wiki repo: $name"
 	return 1
     elif [ ! -d "$repo" ]; then
-	echo "repo not a directory: $name"
+	log_err "repo not a directory: $name"
 	return 1
     fi
 }
 
 do_touch() {
+    if [ $# -eq 0 ]; then
+	log_err "no wiki name provided"
+	return 1
+    fi
     local name=$1
-    local repo="${WIKIS[$name]}"
     shift
-    if ! check_wiki_repo $repo; then
+    if ! check_wiki_repo $name; then
 	exit 1
     fi
+    local repo="${WIKIS[$name]}"
     (
 	cd $repo
 	touch $@
@@ -41,27 +57,32 @@ do_touch() {
 
 do_ls() {
     if [ $# -eq 0 ]; then
+	local n
 	for n in "${!WIKIS[@]}"; do
 	    echo "$n ${WIKIS[$n]}"
 	done | column -t
     else
 	local name=$1
-	local repo="${WIKIS[$name]}"
 	shift
-	if ! check_wiki_repo $repo; then
+	if ! check_wiki_repo $name; then
 	    exit 1
 	fi
+	local repo="${WIKIS[$name]}"
 	ls $@ $repo
     fi
 }
 
 do_wget() {
+    if [ $# -eq 0 ]; then
+	log_err "no wiki name provided"
+	return 1
+    fi
     local name=$1
-    local repo="${WIKIS[$name]}"
     shift
-    if ! check_wiki_repo $repo; then
+    if ! check_wiki_repo $name; then
 	exit 1
     fi
+    local repo="${WIKIS[$name]}"
     (
 	cd $repo
 	wget $@
@@ -71,6 +92,104 @@ do_wget() {
 
 do_ag() {
     ag $@ "${WIKIS[@]}"
+}
+
+do_find() {
+    if [ $# -eq 0 ]; then
+	log_err "no wiki name provided"
+	return 1
+    fi
+    local name=$1
+    shift
+    if [ z$name = zall ]; then
+	local repo="${WIKIS[@]}"
+	if [ z"$repo" = z ]; then
+	    exit 1
+	fi
+    else
+	if ! check_wiki_repo $name; then
+	    exit 1
+	fi
+	local repo="${WIKIS[$name]}"
+    fi
+    find $repo $@
+}
+
+get_wiki_repo_from_realpath() {
+    local rp=$1
+    local name
+    for name in "${!WIKIS[@]}"; do
+	local repo=$(realpath "${WIKIS[$name]}")
+	if [[ z"$rp" == z"$repo"/* ]]; then
+	    echo $name
+	    break
+	fi
+    done
+}
+
+do_w2rp() {
+    if [ $# -eq 0 ]; then
+	log_err "argument format 1: '/wikiname/page'"
+	log_err "argument format 2: 'realpath /wikiname/page'"
+	log_err "argument format 3: 'realpath page'"
+	exit 1
+    fi
+    if [ $# -eq 1 ]; then
+	local page="$1"
+    else
+	local srcp="$1"
+	local page="$2"
+    fi
+    if [ $# -eq 1 ] || [[ z"$page" == z/* ]]; then
+	page=${page#/}
+	local name
+	IFS="/" read -r name page <<<"$page"
+    else
+	local name=$(get_wiki_repo_from_realpath $srcp)
+    fi
+    if ! check_wiki_repo $name; then
+	exit 1
+    fi
+    local repo="${WIKIS[$name]}"
+    # default to org mode files
+    if ! grep -qE '\.[^./]+$' <<<"$page"; then
+	page=$page.org
+    fi
+    local realp=$repo/$page
+    # if [ ! -e $realp ]; then
+    # 	log_err "realpath not exists: $realp"
+    # 	exit 1
+    # fi
+    echo $realp
+}
+
+do_r2wp() {
+    if [ $# -ne 2 ]; then
+	log_err "argument format 1: wikiname realpath"
+	log_err "argument format 2: realpath realpath"
+	return 1
+    fi
+    local srcname=$1
+    local realp=$(realpath $2)
+    shift
+    if [[ z"$srcname" == z/* ]]; then
+	srcname=$(get_wiki_repo_from_realpath $srcname)
+    fi
+    if ! check_wiki_repo $srcname; then
+	exit 1
+    fi
+    local srcrepo="${WIKIS[$srcname]}"
+    local dstname=$(get_wiki_repo_from_realpath $realp)
+    if ! check_wiki_repo $dstname; then
+	exit 1
+    fi
+    local dstrepo="${WIKIS[$dstname]}"
+    local page=$(realpath --relative-to=$(realpath $dstrepo) $realp)
+    if [ z$srcname == z$dstname ]; then
+	echo $page
+    else
+	echo "/$dstname/$page"
+    fi
 }
 
 if [ $# -eq 0 ]; then

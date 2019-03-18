@@ -1,6 +1,6 @@
 INSTALL_BIN_DIR ?= ~/.local/bin
 
-all: install
+all:
 
 install:
 	mkdir -p ${INSTALL_BIN_DIR}
