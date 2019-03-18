@@ -1,0 +1,11 @@
+#+TITLE: miyuki is my wiki manager
+
+`miyuki` helps me manage and search through multiple wiki
+repositories, providing a merged view of them.
+
+Currently, each wiki is a directory of flat files, with no hierarchy;
+and `miyuki` is just a wrapper around `ag`, `wget`, and other common
+unix unitilites.
+
+The name Miyuki takes credit from a character in the manga/anime [[https://en.wikipedia.org/wiki/Lucky_Star_(manga)][Lucky
+Star]], who was given the nickname "miwiki" by fans.

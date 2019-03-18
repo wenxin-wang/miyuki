@@ -1,0 +1,102 @@
+#!/bin/bash
+
+CMDS=(touch ls wget ag)
+
+usage() {
+    cat <<EOF
+usage: $0 [commands] [options]
+
+commands:
+touch wikiname [touch options]
+ls    [wikiname [ls options]]
+wget  wikiname [wget options]
+ag    [ag options]
+EOF
+}
+
+check_wiki_repo() {
+    local repo=$1
+    if [ z"$repo" = z ]; then
+	echo "unknown wiki repo: $name"
+	return 1
+    elif [ ! -d "$repo" ]; then
+	echo "repo not a directory: $name"
+	return 1
+    fi
+}
+
+do_touch() {
+    local name=$1
+    local repo="${WIKIS[$name]}"
+    shift
+    if ! check_wiki_repo $repo; then
+	exit 1
+    fi
+    (
+	cd $repo
+	touch $@
+	cd -
+    )
+}
+
+do_ls() {
+    if [ $# -eq 0 ]; then
+	for n in "${!WIKIS[@]}"; do
+	    echo "$n ${WIKIS[$n]}"
+	done | column -t
+    else
+	local name=$1
+	local repo="${WIKIS[$name]}"
+	shift
+	if ! check_wiki_repo $repo; then
+	    exit 1
+	fi
+	ls $@ $repo
+    fi
+}
+
+do_wget() {
+    local name=$1
+    local repo="${WIKIS[$name]}"
+    shift
+    if ! check_wiki_repo $repo; then
+	exit 1
+    fi
+    (
+	cd $repo
+	wget $@
+	cd -
+    )
+}
+
+do_ag() {
+    ag $@ "${WIKIS[@]}"
+}
+
+if [ $# -eq 0 ]; then
+    usage
+fi
+
+if [ -f ~/.miyuki.sh ]; then
+    . ~/.miyuki.sh
+elif [ -f ~/.config/miyuki/config.sh ]; then
+    . ~/.config/miyuki/config.sh
+fi
+
+is_valid_cmd=0
+for cmd in "${CMDS[@]}"; do
+    if [ $cmd = "$1" ]; then
+	is_valid_cmd=1
+	shift
+	do_$cmd $@
+	break
+    fi
+done
+
+if [ $is_valid_cmd = 0 ]; then
+    if [ $cmd = help ]; then
+	usage
+    else
+	>&2 usage
+    fi
+fi
