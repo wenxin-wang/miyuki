@@ -62,8 +62,9 @@ When INITIAL-INPUT is non-nil, use it in the minibuffer during completion."
 	      :initial-input initial-input
 	      :action
 	      #'(lambda (path)
-		  (when (string-prefix-p "/" path)
-		    (counsel-find-file-action path)))
+		  (if (string-prefix-p "/" path)
+		      (counsel-find-file-action path)
+		    (counsel-miyuki/find-file path)))
 	      :preselect (counsel--preselect-file)
 	      :require-match 'confirm-after-completion
 	      :history 'file-name-history
