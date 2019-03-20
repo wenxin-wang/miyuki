@@ -19,6 +19,26 @@
   "Settings for using miyuki, the simple wiki manager, with counsel"
   :group 'tools)
 
+(defun counsel-miyuki//find-wiki-file (name repo &optional initial-input)
+  (let ((default-directory repo)
+	(counsel-find-file-speedup-remote nil))
+    (ivy-read
+     (format "miyuki file %s: " name)
+     (miyuki//list-wiki-files name)
+     :matcher #'counsel--find-file-matcher
+     :initial-input initial-input
+     :action #'(lambda (path)
+		 (counsel-find-file-action
+		  (if (string-prefix-p "/" path)
+		      path
+		    (miyuki//wiki-to-realpath name path))))
+     :preselect (counsel--preselect-file)
+     :require-match 'confirm-after-completion
+     :history 'file-name-history
+     :keymap counsel-find-file-map
+     :sort t
+     :caller 'counsel-miyuki-find-file)))
+
 ;;;###autoload
 (defun counsel-miyuki/find-file (&optional initial-input)
   "Forward to `find-file'.
@@ -28,28 +48,10 @@ When INITIAL-INPUT is non-nil, use it in the minibuffer during completion."
    "miyuki: " (miyuki/list-wikis)
    :action
    #'(lambda (str)
-       (let* ((wikip (miyuki//parse-wiki-line str))
-	      (name (car wikip))
-	      (default-directory (cadr wikip))
-	      (counsel-find-file-speedup-remote nil))
-	 (ivy-read
-	  (format "miyuki file %s: " name)
-	  (miyuki//list-wiki-files name)
-	  :matcher #'counsel--find-file-matcher
-	  :initial-input initial-input
-	  :action #'(lambda (path)
-		      (counsel-find-file-action
-		       (if (string-prefix-p "/" path)
-			   path
-			 (miyuki//wiki-to-realpath name path))))
-	  :preselect (counsel--preselect-file)
-	  :require-match 'confirm-after-completion
-	  :history 'file-name-history
-	  :keymap counsel-find-file-map
-	  :sort t
-	  :caller 'counsel-miyuki-find-file)
-	 :sort t
-	 :caller 'counsel-miyuki-find-file))))
+       (let* ((wikip (miyuki//parse-wiki-line str)))
+	 (counsel-miyuki//find-wiki-file (car wikip) (cadr wikip))))
+   :sort t
+   :caller 'counsel-miyuki-find-file))
 
 ;;;###autoload
 (defun counsel-miyuki/find-all-file (&optional initial-input)
