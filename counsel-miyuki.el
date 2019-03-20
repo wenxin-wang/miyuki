@@ -49,7 +49,8 @@ When INITIAL-INPUT is non-nil, use it in the minibuffer during completion."
    :action
    #'(lambda (str)
        (let* ((wikip (miyuki//parse-wiki-line str)))
-	 (counsel-miyuki//find-wiki-file (car wikip) (cadr wikip))))
+	 (counsel-miyuki//find-wiki-file
+	  (car wikip) (cadr wikip) initial-input)))
    :sort t
    :caller 'counsel-miyuki-find-file))
 
