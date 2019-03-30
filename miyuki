@@ -3,7 +3,7 @@
 set -e
 trap '>&2 echo Error on line $LINENO' ERR
 
-CMDS=(touch ls cp wget ag find w2rp r2wp)
+CMDS=(touch ls cp mv wget ag find w2rp r2wp)
 
 log_err() {
     >&2 echo $@
@@ -17,6 +17,7 @@ commands:
 touch wikiname [touch options]
 ls    [wikiname [ls options]]
 cp    src dst [cp options]
+mv    src dst [mv options]
 wget  wikiname [wget options]
 ag    [ag options]
 find  [wikiname or "all"] [ag options]
@@ -194,28 +195,37 @@ do_r2wp() {
 }
 
 wiki_url_or_path() {
-    local p=$1
+    local p="$1"
     if [[ z"$p" == zwiki:///* ]]; then
 	do_w2rp "${p#wiki://}"
     else
-	echo $p
+	echo "$p"
     fi
 }
 
-do_cp() {
-    if [ $# -lt 2 ]; then
-	log_err "src dst"
+do_src_dst() {
+    if [ $# -lt 3 ]; then
+	log_err "cmd src dst"
 	return 1
     fi
-    local src=$1
-    local dst=$2
-    shift 2
-    src=$(wiki_url_or_path $src)
-    dst=$(wiki_url_or_path $dst)
+    local cmd="$1"
+    local src="$2"
+    local dst="$3"
+    shift 3
+    src="$(wiki_url_or_path "$src")"
+    dst="$(wiki_url_or_path "$dst")"
     if [[ z"$dst" == z*/.org ]]; then
 	dst="${dst%.org}/"
     fi
-    cp $@ $src $dst
+    $cmd $@ "$src" "$dst"
+}
+
+do_cp() {
+    do_src_dst cp "$@"
+}
+
+do_mv() {
+    do_src_dst mv "$@"
 }
 
 if [ $# -eq 0 ]; then
@@ -234,7 +244,7 @@ for cmd in "${CMDS[@]}"; do
     if [ $cmd = "$1" ]; then
 	is_valid_cmd=1
 	shift
-	do_$cmd $@
+	do_$cmd "$@"
 	break
     fi
 done
