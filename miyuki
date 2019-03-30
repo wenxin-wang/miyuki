@@ -194,6 +194,7 @@ do_r2wp() {
 
 if [ $# -eq 0 ]; then
     usage
+    exit 1
 fi
 
 if [ -f ~/.miyuki.sh ]; then
