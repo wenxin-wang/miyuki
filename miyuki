@@ -3,7 +3,7 @@
 set -e
 trap '>&2 echo Error on line $LINENO' ERR
 
-CMDS=(touch ls wget ag find w2rp r2wp)
+CMDS=(touch ls cp wget ag find w2rp r2wp)
 
 log_err() {
     >&2 echo $@
@@ -16,6 +16,7 @@ usage: $0 [commands] [options]
 commands:
 touch wikiname [touch options]
 ls    [wikiname [ls options]]
+cp    src dst [cp options]
 wget  wikiname [wget options]
 ag    [ag options]
 find  [wikiname or "all"] [ag options]
@@ -190,6 +191,31 @@ do_r2wp() {
     else
 	echo "/$dstname/$page"
     fi
+}
+
+wiki_url_or_path() {
+    local p=$1
+    if [[ z"$p" == zwiki:///* ]]; then
+	do_w2rp "${p#wiki://}"
+    else
+	echo $p
+    fi
+}
+
+do_cp() {
+    if [ $# -lt 2 ]; then
+	log_err "src dst"
+	return 1
+    fi
+    local src=$1
+    local dst=$2
+    shift 2
+    src=$(wiki_url_or_path $src)
+    dst=$(wiki_url_or_path $dst)
+    if [[ z"$dst" == z*/.org ]]; then
+	dst="${dst%.org}/"
+    fi
+    cp $@ $src $dst
 }
 
 if [ $# -eq 0 ]; then
