@@ -75,8 +75,9 @@ When INITIAL-INPUT is non-nil, use it in the minibuffer during completion."
 	      :sort t
 	      :caller 'counsel-miyuki-find-all-file)))
 
+
 (defvar counsel-miyuki/ag-base-command
-  (concat miyuki-bin " " counsel-ag-base-command " -i"))
+  (mapconcat 'identity `(,miyuki-bin ,@counsel-ag-base-command " -i") " "))
 
 (defvar counsel-miyuki/ag-command nil)
 
